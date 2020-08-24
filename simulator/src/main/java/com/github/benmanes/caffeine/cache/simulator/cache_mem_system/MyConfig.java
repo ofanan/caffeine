@@ -17,35 +17,77 @@ import java.util.Set;
 
 import com.github.benmanes.caffeine.cache.simulator.admission.Admission;
 import com.typesafe.config.Config;
-import com.typesafe.config.ConfigException; //.ConfigException.*;
+import com.typesafe.config.ConfigException; 
 import com.typesafe.config.ConfigFactory;
 
+
+// This class is used for the settings and configuration of the simulation. In particular, it:
+// - Reads parameters from the configuration file ("application.conf")
+// - Writes output to the desired output files (under the directory "results")
+// - Allows setting concrete trace file, iteration, and policies to run, thus allowing parallel configuration
 public class MyConfig {
-  static final String path_to_conf_file  = "\\src\\main\\resources\\";
-  static final String path_to_trace_file = "\\src\\main\\resources\\com\\github\\benmanes\\caffeine\\cache\\simulator\\parser\\";
-  static final String confFileName = System.getProperty("user.dir") + path_to_conf_file + "application.conf";
-  static final String trace_file_name = "WikiBench.csv"; 
-  static final String path_to_res_file = "\\results\\";
+  static final String path_to_conf_file  	= "\\src\\main\\resources\\";
+  static final String path_to_trace_file 	= "\\src\\main\\resources\\com\\github\\benmanes\\caffeine\\cache\\simulator\\parser\\";
+  static final String confFileName 				= System.getProperty("user.dir") + path_to_conf_file + "application.conf";
+  static final String path_to_res_file 		= "\\results\\";
+  static 			 String	ScndConfFileName 		= "application2.conf";	// The 2nd conf' file to run (in addition to application.conf). Used to allow running multiple sims in parallel.   
+  static List<String>	traceFileName 			= null;
+  static List<String>	policies			 			= null;
   static 			 int 		initialIteration; // the current iteration of the simulation. Used for running multiple sequencing simulations, e.g., for different update intervals, or bw budgets.
   static 			 int 		currIteration; // the current iteration of the simulation. Used for running multiple sequencing simulations, e.g., for different update intervals, or bw budgets.
-  static 			 String	ScndConfFileName = "application2.conf";	// The 2nd conf' file to run (in addition to application.conf). Used to allow running multiple sims in parallel.   
-  static List<String>	traceFileName = null;
   static 			 int		numOfPoliciesRunning;
   
+  // Set the name of the trace file name.
+  // The input string should be format:fullPathToTraceFile
+  // E.g.: "arc:C:\\Users\\ofanan\\Documents\\traces\\arc\\P8.lis"
   public static void setTraceFileName (String fileName) {
   	traceFileName = new ArrayList<>();
   	traceFileName.add(fileName);
   }
   
+  // Set the policies to run during the simulation.
+  // Current supported policies are: Lru, Frd, Hyperbolic, Lfu.
+  // However, Lfu cannot be run in conjunction with any other policy.
+  // Input should be the policies names, splitted by periods, e.g.: "Lru.Frd"
+  public static void setPolicies (String policiesNames) {
+  	String[] policies_as_arr = policiesNames.split("\\.");
+  	if (policies_as_arr.length > 1) {
+  		for (String policy : policies_as_arr) {
+  			if (policy.equals("Lfu")) {
+  				System.out.print ("You requested to run the policies " + policies +". However, I cannot run Lfu in the same sim with other policies.\n");
+  				System.exit(0);
+  			}  				
+  		}
+  	}
+  	policies = new ArrayList<>();
+		for (String policy : policies_as_arr) {
+			if (policy.equals("Lru")) {
+				policies.add ("my_linked.Lru");
+			}
+			if (policy.equals("Frd")) {
+				policies.add ("irr.Frd");
+			}
+			if (policy.equals("Hyperbolic")) {
+				policies.add ("sampled.Hyperbolic");
+			}
+			if (policy.equals("Lfu")) {
+				policies.add ("sketch.WindowTinyLfu");
+			}
+		}  	
+  }
+  
+  // Currently unused, and replaced by setTraceFileName (String fileName).
   public static void setTraceFileName (String format, String fileName) {
   	traceFileName = new ArrayList<>();
   	traceFileName.add(format + ":" + GetPathToTraceFile() + fileName);
   }
   
+  // Get the full path to the trace files in this machine
   public static String GetPathToTraceFile () {
   	return System.getProperty("user.dir") + path_to_trace_file;
   }
   
+  // Get the full path to the conf' file ("application.conf") in this machine
   public static String GetFullPathToConfFile () {
   	return System.getProperty("user.dir") + path_to_conf_file;
   }
@@ -147,7 +189,7 @@ public class MyConfig {
     return res;
   }
   
-  // Returns an int, which is the value of a key (given as a string) written in a given fileName
+  // Returns a double, which is the value of a key (given as a string) written in a given fileName
   private static double getDoubleParameterFromFile (String str, String fileName) {
     Double res = -1.0;
     try {
@@ -160,7 +202,7 @@ public class MyConfig {
     return res;
   }
   
-  // Returns an int, which is the value of a key (given as a string) written in a given fileName
+  // Returns a String, which is the value of a key (given as a string) written in a given fileName
   private static String getStringParameterFromFile (String str, String fileName) {
     String res = null;
     try {
@@ -173,45 +215,17 @@ public class MyConfig {
     return res;
   }
   
-/*  
-  // Returns the desired String parameter written in the configuration file
-  public static String GetStringParameterFromConfFile (String str) {
-    String res = null;
-    try {
-      res = myGetConfig(confFileName).getString(str);
-    }
-    catch (ConfigException.Missing | ConfigException.WrongType e) { //
-      System.out.println("****** Error ****: Missing String parameter " + str + " in configuration file");
-      System.exit (0);
-    }
-    return res;
-  }
-  
-  // Returns the desired double parameter written in the configuration file
-  public static double GetDoubleParameterFromConfFile (String str) {
-    double res = -1;
-    try {
-      res = myGetConfig(confFileName).getDouble(str);
-    }
-    catch (ConfigException.Missing | ConfigException.WrongType e) { //
-      System.out.println("Missing double parameter " + str + " in configuration file");
-      System.exit (0);
-    }
-    return res;
-  }
-*/
-  
   // Returns the desired int parameter written in the default configuration file (application.conf)
   public static int GetIntParameterFromConfFile (String str) {
   	return getIntParameterFromFile (str, confFileName);
   }
 
-  // Returns the desired int parameter written in the default configuration file (application.conf)
+  // Returns the desired double parameter written in the default configuration file (application.conf)
   public static double GetDoubleParameterFromConfFile (String str) {
   	return getDoubleParameterFromFile (str, confFileName);
   }
 
-  // Returns the desired int parameter written in the default configuration file (application.conf)
+  // Returns the desired String parameter written in the default configuration file (application.conf)
   public static String GetStringParameterFromConfFile (String str) {
   	return getStringParameterFromFile (str, confFileName);
   }
@@ -245,21 +259,17 @@ public class MyConfig {
     return res;
   }
   
+  // Sets the number of policies currently running. Used for allowing finishing the sim' when all policies finished running.
   public static void setNumOfPoliciesRunning () {
-  	numOfPoliciesRunning = getStringListParameterFromFile ("caffeine.simulator.policies", confFileName).size();
+  	numOfPoliciesRunning = getStringListParameterFromFile ("policies", confFileName).size();
   }
   
+  // Decrements the number of policies currently running. Used for allowing finishing the sim' when all policies finished running.
   public static int decNumOfPoliciesRunning () {
   	return (--numOfPoliciesRunning);
   }
   
-  // Returns the names of the trace files running in the trace.
-  public static List<String>  getTraceFileName() {
-  	return (traceFileName == null)? 
-  			getStringListParameterFromFile ("caffeine.simulator.files.paths", confFileName) : traceFileName;
-  }
-
-  // Returns A list of the budgets to be run.
+  // Returns a list of the budgets to be run.
   public static List<Double>  getBudgets() {
   	return getDoubleListParameterFromFile ("budgets", confFileName);
   }
@@ -281,7 +291,7 @@ public class MyConfig {
   // Returns a File (java's File Descriptor) for the trace file to be run.
   // This function is usually not used, because I use Caffeine's native traces.
   public static File GetTraceFile() {
-    String trace_file_full_path = System.getProperty("user.dir") + "\\traces\\" + trace_file_name;
+    String trace_file_full_path = System.getProperty("user.dir") + "\\traces\\" + getTraceFileName().get(0);
     File trace_file = new File (trace_file_full_path);   
     if (!trace_file.isFile()) {
       System.out.println ("Trace file " + trace_file_full_path + " does not exist");
@@ -303,17 +313,39 @@ public class MyConfig {
     return scanner;
   }
   
+  // Prints a string to stdout, and finishes the sim'
   public static void printAndExit (String str) {
   	System.out.println (str);
   	System.exit (0);
   }
   
+  // Returns the names of the policies running in the trace.
+  public static List<String>  getPolicies () {
+  	return (policies == null)? 
+  			getStringListParameterFromFile ("policies", confFileName) : policies;
+  }
+
+  // Returns the names of the trace files running in the trace.
+  public static List<String> getTraceFileName() {
+  	return (traceFileName == null)? 
+  			getStringListParameterFromFile ("caffeine.simulator.files.paths", confFileName) : traceFileName;
+  }
+
+
+  // Returns a set of the admissions to be used in this simulation.
+  // If the policy running is Lfu (actually, WindowTinyLfu), the output is ["TinyLFU"], for having LFU's admission control
+  // Else, the output is "Always", meaning that a missed item is always accepted into the cache.
   public static Set<Admission> admission() {
-    return 
-    		myGetConfig(confFileName).getStringList("admission").stream()
-        .map(String::toUpperCase)
-        .map(Admission::valueOf)
-        .collect(toSet());
+  	List<String> admission = new ArrayList<String>();
+  	List <String> policies = getPolicies();
+  	if (policies.size()==1 && policies.get(0).equals("sketch.WindowTinyLfu")) {
+  		admission.add("TinyLFU");
+  	}
+  	else {
+  		admission.add("Always");
+  	}
+  	
+  	return admission.stream() .map(String::toUpperCase) .map(Admission::valueOf) .collect(toSet());
   }
 
 }

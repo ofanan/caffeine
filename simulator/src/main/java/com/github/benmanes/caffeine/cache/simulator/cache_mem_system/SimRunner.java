@@ -17,15 +17,16 @@ public class SimRunner {
   	String runScarab 	= "scarab:C:\\Users\\ofanan\\Documents\\traces\\scarab\\scarab.recs.trace.20160808T073231Z.xz";
   	String runWiki2 	= "wikipedia:C:\\Users\\ofanan\\Google Drive\\Comnet\\BF_n_Hash\\Python_Infocom19\\wiki2.1191403252.gz";
   	String runWiki1 	= "wikipedia:C:\\Users\\ofanan\\Google Drive\\Comnet\\BF_n_Hash\\Python_Infocom19\\wiki.1190448987.gz";
+  	String runCorda		= "corda:C:\\Users\\ofanan\\Documents\\traces\\corda\\corda.trace_vaultservice.gz";
   	 	
- 		MyConfig.setTraceFileName (runF1);
+ 		MyConfig.setTraceFileName (runWiki1);
   
   	javax.swing.SwingUtilities.invokeLater(new Runnable() {
       	public void run() {
           	String[] args = {
-          									"0", // number of first iteration. Used for multiple parallel simulations
-          									 "1",  // number of iterations to run
-          									 "rgrg" // name of 2nd conf' file, to be used for parallel runs (currently unused).
+          									"0", 		// number of first iteration. Used for multiple parallel simulations
+          									"1",  	// number of iterations to run
+          									"Lfu" 	// Policies to run, splitted by periods, e.g.: "Lru.Frd"
           									};
           	Simulator.main(args);
           

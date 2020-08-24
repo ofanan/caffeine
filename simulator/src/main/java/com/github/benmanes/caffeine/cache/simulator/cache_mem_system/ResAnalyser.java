@@ -14,8 +14,8 @@ import java.util.Vector;
 import org.checkerframework.checker.units.qual.K;
 import java.util.HashMap;
 
-//Tasks performed by ResAnalyzer. See further details in the documentation of 
-// simulator/src/main/resources/application.conf parameter "run-mode".
+// Tasks performed by ResAnalyzer. 
+// You may either 
 enum Tasks {  
 //	costHeatmap, 								// cost heatmap as func of d.fpr, update interval. 
 	//budgetPareto, 							// find best conf' in budget bin
@@ -691,7 +691,7 @@ public class ResAnalyser {
 		double minCostInBin; // Will hold the cheapest cost of any conf' found in this bin AND budget constraints
 		double indicatorSize;
 		
-		double cacheSize = (double) MyConfig.GetIntParameterFromConfFile ("caffeine.simulator.maximum-size"); 
+		double cacheSize = (double) MyConfig.GetIntParameterFromConfFile ("cache-size"); 
 		
 		for (short i = 0; i < numOfBudgets; i++) {
 			

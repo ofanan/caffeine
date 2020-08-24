@@ -56,13 +56,12 @@ public class BasicSettings {
   }
 
   public Set<String> policies() {
-    return config().getStringList("policies").stream()
-        .map(String::toLowerCase)
-        .collect(toSet());
+  	System.out.printf("policy is %s\n", MyConfig.getPolicies().get(0));
+  	return MyConfig.getPolicies(). stream() .map(String::toLowerCase) .collect(toSet()); //$$
   }
 
   public Set<Admission> admission() {
-    return MyConfig.admission(); //$$ Changed for reading the admission only from "application.conf", rather than from "reference.conf". 
+    return MyConfig.admission(); //$$  
   }
 
   public MembershipSettings membership() {
@@ -74,7 +73,7 @@ public class BasicSettings {
   }
 
   public int maximumSize() {
-    return config().getInt("maximum-size");
+    return MyConfig.GetIntParameterFromConfFile("cache-size");   		
   }
 
   public boolean isFiles() {
@@ -184,8 +183,7 @@ public class BasicSettings {
 
   public final class TraceFilesSettings {
     public List<String> paths() {
-    	return MyConfig.getTraceFileName();
-      // return config().getStringList("files.paths"); $$
+    	return MyConfig.getTraceFileName();   // Get the names and formats of trace files from application.conf
     }
     public TraceFormat format() {
       return TraceFormat.named(config().getString("files.format"));

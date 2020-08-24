@@ -81,7 +81,7 @@ public class SetOfIndicators<K> {
   	this.policyName = policyName;
     // Retrieve parameters' values from the conf' file (application.conf)
 
-    cacheSize 						= MyConfig.GetIntParameterFromConfFile 		("caffeine.simulator.maximum-size"); //Cache size is used for estimating the # of items to be concurrently stored in the CBF
+    cacheSize 						= MyConfig.GetIntParameterFromConfFile 		("cache-size"); 
     double deltaFpr 			= MyConfig.GetDoubleParameterFromConfFile	("delta-designed-indicator-fpr"); //delta between the values of inherent fpr of indicators
     hdrSize								= MyConfig.GetDoubleParameterFromConfFile	("hdr-size");
   	minUpdateInterval 		= MyConfig.GetDoubleParameterFromConfFile	("minimal-update-interval");

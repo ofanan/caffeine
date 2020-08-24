@@ -163,10 +163,10 @@ public final class Simulator extends AbstractActor {
   	if (runMode <= 0) {
   	   ResAnalyser resAnalyser = new ResAnalyser(); 
   	   resAnalyser.runAll ();
-   	   	   return;
+   	   return;
   	}
   	if (args.length > 0) { // Allow starting from iteration > 0, or with multiple conf' files. Used for multiple parallel simulations.
-  		currIteration = Integer.parseInt(args[0]);
+  		currIteration = (runMode > 0)? Integer.parseInt(args[0]) : 0; //Running alg' always begins at iteration 0. 
    	  finalIteration = currIteration + Integer.parseInt(args[1]);  
   		if (currIteration < 0 || finalIteration < 0 || currIteration > maxNumOfIterations || finalIteration > maxNumOfIterations) {
   			System.out.printf("Wrong iteration parameters in call to simulator.main: currIteration = %d, num of iterations = %d\n", args[0], args[1]);
@@ -174,6 +174,7 @@ public final class Simulator extends AbstractActor {
   		}
   		MyConfig.setInitialIteration	(currIteration);
   		MyConfig.setIteration					(currIteration);
+    	MyConfig.setPolicies 					(args[2]);
     	System.out.printf("Running %d iterations, runMode=%d\n", finalIteration - currIteration, runMode);
   	}
   	else {
