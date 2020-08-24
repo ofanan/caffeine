@@ -1,0 +1,5 @@
+* text=auto
+gradlew text eol=lf
+gradlew.bat text eol=crlf
+mvnw.cmd text eol=crlf
+simulator/build[[:space:]]from[[:space:]]web.gradle filter=lfs diff=lfs merge=lfs -text

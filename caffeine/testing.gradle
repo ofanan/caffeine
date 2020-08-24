@@ -1,0 +1,91 @@
+/**
+ * The configuration to break cache tests into independant tasks.
+ */
+test {
+  useTestNG()
+  exclude 'com/github/benmanes/caffeine/cache/**'
+}
+
+def implementations = ['Caffeine', 'Guava']
+def testNames = [
+  'strongKeysAndStrongValues', 'strongKeysAndWeakValues', 'strongKeysAndSoftValues',
+  'weakKeysAndStrongValues', 'weakKeysAndWeakValues', 'weakKeysAndSoftValues']
+  .collectNested { [it, it + 'Stats'] }
+  .collectNested { it.contains('StrongValues') ? [it + 'Sync', it + 'Async'] : (it + 'Sync') }
+  .plus('slow')
+  .collectNested { type -> implementations.collect { type + it + 'Test' } }.flatten()
+  .findAll { !(it.contains('Guava') && it.contains('Async')) }
+
+testNames.each { testName ->
+  def isAsync = testName.contains('Async')
+  def hasStats = testName.contains('Stats')
+  def implementation = implementations.find { testName.contains(it) }
+  def testType = testName - implementation - 'Test' - 'Stats' - 'Async' - 'Sync'
+  def labels = testType.split('And').collect { it[0].toLowerCase() + it.substring(1) }
+
+  task "${testName}"(type: Test) {
+    it.useTestNG()
+    group = 'Cache tests'
+    description = 'Runs ' + labels.join(' with ') +
+      implementation + ' and ' + (hasStats ? 'stats ' : 'no stats ') +
+      (isAsync ? 'asynchronous' : 'synchronous') + ' tests.'
+    include 'com/github/benmanes/caffeine/cache/**'
+
+    if (labels.size() == 2) {
+      def strength = labels.collect{ it.split('Keys|Values') }.flatten()
+      systemProperties['keys'] = strength[0]
+      systemProperties['values'] = strength[1]
+      systemProperties['compute'] = isAsync ? 'async' : 'sync'
+      systemProperties['stats'] = hasStats ? 'enabled' : 'disabled'
+
+    }
+    systemProperties['implementation'] = implementation
+
+    // Configure task dependencies
+    if (!name.startsWith('slow')) {
+      tasks.test.dependsOn(it)
+    }
+    if (System.env.JITPACK == 'true') {
+      enabled = false
+    }
+  }
+}
+
+task isolatedTests(type: Test, group: 'Cache tests') {
+  description = 'Tests that must be run in isolation'
+
+  useTestNG()
+  it.onlyIf { !System.env.'CI' }
+}
+
+task osgiTests(type: Test, group: 'Cache tests', description: 'Isolated OSGi tests') {
+  enabled = !JavaVersion.current().isJava9Compatible()
+
+  useJUnit()
+  tasks.test.dependsOn(it)
+  systemProperty 'caffeine.osgi.jar', project(':caffeine').jar.archivePath.path
+}
+
+tasks.withType(Test) {
+  if (options instanceof TestNGOptions) {
+    if (name.startsWith('slow')) {
+      maxParallelForks = 2
+      jvmArgs '-XX:+UseParallelGC'
+      options.includeGroups = ['slow']
+    } else if (name.startsWith('isolated')) {
+      options.includeGroups = ['isolated']
+    } else {
+      options {
+        threadCount = Math.max(6, Runtime.getRuntime().availableProcessors() - 1)
+        excludeGroups = ['slow', 'isolated']
+        jvmArgs '-XX:+UseG1GC'
+        parallel = 'methods'
+      }
+    }
+  }
+}
+
+task stress(type: JavaExec, group: 'Cache tests', description: 'Executes a stress test') {
+  classpath sourceSets.test.runtimeClasspath
+  main = 'com.github.benmanes.caffeine.cache.Stresser'
+}

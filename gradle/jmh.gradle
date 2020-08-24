@@ -1,0 +1,77 @@
+/**
+ * Java microbenchmark harness: https://github.com/melix/jmh-gradle-plugin
+ */
+apply plugin: 'com.github.johnrengelman.shadow'
+apply plugin: 'me.champeau.gradle.jmh'
+apply plugin: 'io.morethan.jmhreport'
+
+idea.module {
+  scopes.PROVIDED.plus += [ configurations.jmh ]
+}
+
+plugins.withType(EclipsePlugin) {
+  project.eclipse.classpath.plusConfigurations += [ configurations.jmh ]
+}
+
+eclipse.classpath.file.whenMerged {
+  entries.find { it.path == 'src/jmh/java' }.entryAttributes['test'] = 'true'
+}
+
+dependencies {
+  afterEvaluate {
+    jmh configurations.testCompile.allDependencies
+  }
+}
+
+tasks.jmh {
+  group = 'Benchmarks'
+  description = 'Executes a Java microbenchmark'
+}
+
+jmhJar {
+  mergeServiceFiles()
+}
+
+jmh {
+  jmhVersion = versions.jmh
+
+  if (project.hasProperty('includePattern')) {
+    include = project.includePattern
+  } else {
+    tasks.jmh.doFirst { throw new GradleException("jmh: includePattern expected") }
+  }
+  // Benchmark parameters: Separated by '&' for parameter types, and ',' for multiple values
+  if (project.hasProperty('benchmarkParameters')) {
+    benchmarkParameters = project.benchmarkParameters.split('&').inject([:]) { map, token ->
+      token.split('=').with { map[it[0]] = (it[1].split(',') as List) }
+      map
+    }
+  }
+
+  // Benchmark mode: Throughput/thrpt, AverageTime/avgt, SampleTime/sample, SingleShotTime/ss, All/all
+  benchmarkMode = ['thrpt']
+  // Available time units are: [m, s, ms, us, ns]
+  timeUnit = 's'
+
+  resultFormat = 'json'
+  resultsFile = file("${buildDir}/reports/jmh/results.json")
+
+  jvmArgs = '-server -Xmx2G -XX:+UseG1GC -XX:-UseBiasedLocking'
+  warmupIterations = 10
+  failOnError = true
+  iterations = 10
+  forceGC = true
+  fork = 1
+}
+
+jmhReport {
+  jmhResultPath = jmh.resultsFile
+  jmhReportOutput = file('build/reports/jmh')
+}
+
+tasks.jmh.finalizedBy tasks.jmhReport
+tasks.jmh.dependsOn tasks.bundle
+
+tasks.named('compileJmhJava').configure {
+  options.errorprone.disable('NullAway')
+}

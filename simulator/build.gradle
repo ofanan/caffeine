@@ -1,0 +1,131 @@
+import net.ltgt.gradle.errorprone.CheckSeverity
+
+
+//plugins {
+//  id 'net.ltgt.errorprone'
+//  id 'java-library'
+//  id 'application'
+//}
+apply plugin:'application'
+apply plugin:'java-library' // Added to allow using 'api' (rather than 'compile') in the dependency akka-actor_2.13 without having a build error
+
+mainClassName = 'com.github.benmanes.caffeine.cache.simulator.Simulator'
+
+//$$ repo added by ofanan for using Orestes BF
+repositories {
+    jcenter()
+    mavenCentral()
+}
+
+dependencies {
+  implementation project(':caffeine')
+
+  //errorprone("com.google.errorprone:error_prone_core:1.2.1")
+
+  implementation libraries.xz
+  implementation libraries.ohc
+  implementation libraries.akka
+  implementation libraries.ycsb
+  implementation libraries.guava
+  implementation libraries.stream
+  implementation libraries.tcache
+  implementation libraries.cache2k
+  implementation libraries.ehcache3
+  implementation libraries.fastutil
+  implementation libraries.slf4jNop
+  implementation libraries.collision
+  implementation libraries.fastfilter
+  implementation libraries.flipTables
+//  implementation libraries.picocli
+  implementation libraries.jcommander
+  implementation libraries.expiringMap
+  implementation libraries.commonsLang3
+  implementation libraries.commonsMath3
+  implementation libraries.elasticSearch
+  implementation libraries.commonsCompress
+  implementation libraries.univocityParsers
+  testImplementation testLibraries.testng
+
+// $$ dependencies added by ofanan for using Orestes BF
+	// https://mvnrepository.com/artifact/redis.clients/jedis
+	implementation group: 'redis.clients', name: 'jedis', version: '3.3.0'
+	// The jar is found at: C:\Users\ofanan\.gradle\caches\modules-2\files-2.1\com.baqend\bloom-filter\2.2.2\5a6e3fcae86c72eee1da611234cdd6f2b78e692d
+	implementation 'com.baqend:bloom-filter:2.2.2' 
+
+  // Added to solve a build error in Simulator.java
+	//    compile group: 'org.scala-lang', name: 'scala-library', version: '2.13.1'
+	
+	//Changed from 'compile' to 'api' to resolve problem of warning -  This behaviour has been deprecated and is scheduled to be removed in Gradle 7.0 
+  api group: 'com.typesafe.akka', name: 'akka-actor_2.13', version: '2.6.5' 
+  implementation 'org.scala-lang:scala-library:2.13.1'    
+  //implementation ('com.baqend:bloom-filter:2.0.0')
+  compile('com.baqend:bloom-filter:2.2.2')
+}
+
+//test {
+//  useTestNG()
+//}
+
+// JMH zip archive overlaps with the application's
+if (!(gradle.startParameter.taskNames ==~ /.*uploadArchives.*/)) {
+  apply from: "${rootDir}/gradle/jmh.gradle"
+
+  jmh {
+    benchmarkMode = ['avgt']
+    warmupIterations = 1
+    iterations = 3
+  }
+}
+
+coverity {
+  skip = true
+}
+
+sonarqube {
+  skipProject = true
+}
+
+jar.manifest {
+  attributes 'Bundle-SymbolicName': 'com.github.benmanes.caffeine.simulator'
+  attributes 'Automatic-Module-Name': 'com.github.benmanes.caffeine.simulator'
+}
+
+tasks.withType(JavaCompile) {
+  options.errorprone.nullaway {
+    severity = CheckSeverity.OFF
+  }
+}
+
+//tasks.withType(JavaExec) {
+    //if (System.getProperty('DEBUG', 'false') == 'true') {
+        //jvmArgs '-Xdebug', '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=9099'
+    //}
+//}
+
+
+tasks.withType(Javadoc) {
+  options.addStringOption('Xdoclint:none', '-quiet')
+  // https://github.com/akka/akka/issues/21165
+  enabled = !JavaVersion.current().isJava9Compatible()
+}
+
+run {
+  systemProperties System.properties.findAll {
+    it.getKey().startsWith('akka') || it.getKey().startsWith('caffeine')
+  }
+}
+
+task rewrite(type: JavaExec) {
+  main = 'com.github.benmanes.caffeine.cache.simulator.parser.Rewriter'
+  classpath = sourceSets.main.runtimeClasspath
+
+  def arguments = ['inputFormat', 'inputFiles', 'outputFile', 'outputFormat']
+  for (def argument : arguments) {
+    if (project.hasProperty(argument)) {
+      args "--${argument}", project.property(argument)
+    }
+  }
+  if (args.isEmpty()) {
+    args '--help'
+  }
+}

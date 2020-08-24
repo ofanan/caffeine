@@ -1,0 +1,122 @@
+132.72.23.63
+port 3097
+shirMALA99
+
+
+Length of the traces:
+_____________________
+scarab:recs.trace.20160808T073231Z.xz: 	8159232 requests
+corda:trace_vaultservice.gz: 			135702 requests
+corda:trace_vaultservice_large.gz: 		1872322 requests
+wikipedia:wiki.1190448987.gz:			4335577 requests
+
+Prob' with SBNPsqrt alg:
+_____________________
+THE PROB': when sending the deltas with LRU, the "delta" size increases almost linearly with the uInterval.
+Hence, doubling the uInterval doesn't reduce the BW consumption at all, because it doubles also the update size. 
+This is the reason to the large deviation from the desiried BW.
+
+The new decision should be taken based on:
+Bf = Bw / ( |I_t| / u_t )
+Bp = Bw / B
+If Bf < 1: // You're off the Pareto line 
+ I_{t+1} = I_t / Bp ///Bf // Move along other axis towards the Pareto line
+ u_{t+1} = 1   //u_t	//Keep 1 axis fixed
+else 
+ "current alg"
+ 
+When is ( |I_t| / u_t ) > B?
+
+
+The new decision should be taken based on:
+Bf = Bw / ( |I_t| / u_t )
+I_t^* = I_t / Bf // Move along other axis towards the Pareto line
+And then lines 4-5 of the current SB alg', but with I_t^* instead of I_t.
+
+Bp = Bw / B
+
+If Bf < 1: 
+	if (FP > FN * missp)
+		u_{t+1} = u_t
+		I_{t+1} = I_t / Bp 		// or maybe I_T / Bf?
+	else
+		u_{t+1} = u_t / Bp
+		I_{t+1} = I_t  			// or maybe I_T / Bf?
+
+Verifying we're in Delta mode:
+______________________________
+curConf.Bw = 7.529, indSize = 29183, uInterval = 3866, deltaUpdateCnt = 0, fullUpdateCnt = 129
+Bw consumed in full updates phase:
+num of updates during reconf' interval * I / reconf' interval = 129 * 29183 / 500000 = 7.529
+So why is the other calculation wrong?
+ind' size / uInterval isn't accurate due to rounding issues (e.g., whether the last update have happened just before / after
+the reconf' interval). 
+
+reqCnt = 2300000, FP cnt = 389, FN cnt = 0, indSize = 98498, uInterval = 1, Bf = 0.00, util = 0.98, hit ratio = 0.57
+
+B = 50/req
+
+98498/x = 50 --> x = 2000
+
+
+Option I: stay within the DELTAs regime: we CANNOT increase the indSize within the budget!
+reqCnt = 2400000, FP cnt = 450, FN cnt = 150, indSize = 98498, uInterval = 500, Bf = 0.00, util = 0.98, hit ratio = 0.57
+
+
+Option II: Simulate the FULL_IND regime
+reqCnt = 2400000, FP cnt = 10000, FN cnt = 1000, indSize = 98498, uInterval = 2000, Bf = 0.00, util = 0.98, hit ratio = 0.57
+
+reqCnt = 2500000, FP cnt = , FN cnt = , indSize = 150000, uInterval = 3000, 
+
+
+
+reqCnt = 2400000, FP cnt = 1394, FN cnt = 10356, indSize = 98498, uInterval = 4090, Bf = 0.98, util = 0.47, hit ratio = 0.57
+in full indicators mode
+reqCnt = 2500000, FP cnt = 16613, FN cnt = 3028, indSize = 20864, uInterval = 410, Bf = 0.16, util = 0.16, hit ratio = 0.57
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

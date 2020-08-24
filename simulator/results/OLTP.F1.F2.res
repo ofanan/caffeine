@@ -1,0 +1,10 @@
+OLTP.F1.F2.IDJmm.C64K.M3.HB20.Lfu | cost = 2.2299 | meanBw used = 27.24 | hit ratio = 0.4469
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Lru | cost = 2.1732 | meanBw used = 19.92 | hit ratio = 0.4894
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Frd | cost = 2.0659 | meanBw used = 19.97 | hit ratio = 0.5286
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Hyperbolic | cost = 2.1173 | meanBw used = 20.38 | hit ratio = 0.4927
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Lru | cost = 2.1732 | meanBw used = 19.92 | hit ratio = 0.4894
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Frd | cost = 2.0659 | meanBw used = 19.97 | hit ratio = 0.5286
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Hyperbolic | cost = 2.1173 | meanBw used = 20.38 | hit ratio = 0.4927
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Lru | cost = 2.1732 | meanBw used = 19.92 | hit ratio = 0.4894
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Frd | cost = 2.0659 | meanBw used = 19.97 | hit ratio = 0.5286
+OLTP.F1.F2.IDJmm.C16K.M3.HB20.Hyperbolic | cost = 2.1173 | meanBw used = 20.38 | hit ratio = 0.4927

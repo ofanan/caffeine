@@ -1,0 +1,195 @@
+/**
+ * Configurations for code quality analysis
+ */
+apply plugin: 'org.kordamp.gradle.stats'
+apply plugin: 'com.github.spotbugs'
+apply plugin: 'net.ltgt.errorprone'
+apply plugin: 'net.ltgt.nullaway'
+apply plugin: 'org.sonarqube'
+apply plugin: 'net.ltgt.apt'
+apply plugin: 'checkstyle'
+apply plugin: 'jacoco'
+apply plugin: 'java'
+apply plugin: 'pmd'
+
+configurations {
+  checkstyleConfig
+}
+
+repositories {
+  flatDir {
+    dirs "${rootDir}/build/libs"
+  }
+}
+
+dependencies {
+  checkstyleConfig gradlePlugins.checkstyle
+  errorproneJavac libraries.errorproneJavac
+  errorprone libraries.errorproneCore
+  errorprone libraries.nullaway
+  errorprone name: 'caffeine_local'
+}
+
+// Gradle rewrites the compiler's dependency on Caffeine to a project dependency, which fails
+// Instead we have to download and trick the build to put the jar on the compiler's classpath
+// See the downloadCaffeineLocal() task and https://github.com/gradle/gradle/issues/11625
+task downloadCaffeineLocal() {
+  def url = 'https://repo1.maven.org/maven2/com/github/ben-manes/caffeine/caffeine/2.8.0/caffeine-2.8.0.jar'
+  def local = file("${rootDir}/build/libs/caffeine_local.jar")
+  if (!local.exists()) {
+    local.parentFile.mkdirs()
+    new URL(url).withInputStream{ input -> local.withOutputStream{ it << input }}
+  }
+}
+
+javadoc.options.links(
+  'https://lightbend.github.io/config/latest/api/',
+  "https://guava.dev/releases/${versions.guava}/api/docs/")
+def majorVersion = JavaVersion.current().majorVersion
+if (JavaVersion.current().isJava11Compatible()) {
+  javadoc.options.links("https://docs.oracle.com/en/java/javase/${majorVersion}/docs/api/")
+} else {
+  javadoc.options.links("https://docs.oracle.com/javase/${majorVersion}/docs/api/")
+}
+
+jar {
+  manifest.attributes 'Bundle-License': 'https://www.apache.org/licenses/LICENSE-2.0'
+  metaInf {
+    from "${rootDir}/LICENSE"
+  }
+}
+
+checkstyle {
+  showViolations = true
+  toolVersion = pluginVersions.checkstyle
+  config = resources.text.fromArchiveEntry(configurations.checkstyleConfig, 'google_checks.xml')
+}
+
+spotbugs {
+  effort = 'max'
+  toolVersion = pluginVersions.spotbugs
+  excludeFilter = file("${rootDir}/config/spotbugs/exclude.xml")
+}
+
+pmd {
+  ruleSets = []
+  toolVersion = pluginVersions.pmd
+  ruleSetConfig = resources.text.fromFile(file("${rootDir}/config/pmd/rulesSets.xml"))
+}
+
+jacoco {
+  toolVersion = pluginVersions.jacoco
+}
+
+jacocoTestReport {
+  group = 'Coverage reports'
+  description = 'Generates a test coverage report for a project'
+
+  reports {
+    xml.enabled = true
+    html.enabled = true
+  }
+}
+
+task jacocoMerge(type: JacocoMerge) {
+  executionData tasks.withType(Test)
+
+  doFirst {
+    executionData = files(executionData.findAll { it.exists() })
+  }
+}
+
+sonarqube {
+  properties {
+    property 'sonar.jacoco.reportPath', jacocoMerge.destinationFile
+  }
+}
+tasks.sonarqube.dependsOn(jacocoMerge)
+
+tasks.withType(JavaCompile) {
+  dependsOn downloadCaffeineLocal
+  options.compilerArgs << '-Xlint:all,-auxiliaryclass'
+  options.encoding = 'UTF-8'
+  options.errorprone {
+    option('ClassName')
+    option('ComparisonContractViolated')
+    option('DepAnn')
+    option('DivZero')
+    option('EqualsBrokenForNull')
+    option('FunctionalInterfaceClash')
+    option('LockMethodChecker')
+    option('LongLiteralLowerCaseSuffix')
+    option('MissingDefault')
+    option('MixedArrayDimensions')
+    option('NoAllocation')
+    option('NumericEquality')
+    option('RedundantThrows')
+    option('RemoveUnusedImports')
+    option('TimeUnitMismatch')
+    option('UnlockMethod')
+    option('UnnecessaryDefaultInEnumSwitch')
+    error('NullAway')
+
+    nullaway {
+      annotatedPackages.add('com.github.benmanes.caffeine')
+    }
+
+    // Disabled due to incompatibility; fixed in
+    // https://github.com/google/error-prone/issues/1106
+    if (JavaVersion.current().isJava12Compatible()) {
+      // Avoid explicitly enabling, as sometimes lost by JMH's compile task
+      enabled = false
+    }
+  }
+}
+
+tasks.named('compileTestJava').configure {
+  options.errorprone.disable('NullAway')
+}
+
+tasks.withType(Test) {
+  if (System.properties.containsKey('debug')) {
+    jvmArgs '-Xdebug', '-Xrunjdwp:transport=dt_socket,server=y,suspend=y,address=5005'
+  }
+  options {
+    jvmArgs '-XX:SoftRefLRUPolicyMSPerMB=0'
+  }
+  if (System.env.'CI') {
+    maxHeapSize = '512m'
+    reports.html.enabled = false
+  }
+  testLogging {
+    events 'skipped', 'failed'
+    exceptionFormat 'full'
+    showCauses = true
+    showExceptions = true
+    showStackTraces = true
+  }
+}
+
+tasks.withType(Checkstyle) {
+  enabled = System.properties.containsKey('checkstyle')
+  group = 'Checkstyle'
+  reports {
+    xml.enabled = false
+    html.enabled = true
+  }
+}
+
+afterEvaluate {
+  tasks.findAll { it.name.startsWith('spotbugs') }.each {
+    it.enabled = System.properties.containsKey('spotbugs')
+    it.group = 'SpotBugs'
+    it.reports.xml.enabled = false
+    it.reports.html.enabled = true
+  }
+}
+
+tasks.withType(Pmd) {
+  enabled = System.properties.containsKey('pmd')
+  group = 'PMD'
+  reports {
+    xml.enabled = false
+    html.enabled = true
+  }
+}
