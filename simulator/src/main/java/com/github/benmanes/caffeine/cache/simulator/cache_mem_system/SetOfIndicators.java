@@ -7,6 +7,9 @@ import java.util.List;
 
 import com.github.benmanes.caffeine.cache.simulator.policy.PolicyStats;
 
+// The main implementation of a cache-with-indicator system.
+// Includes the set of indicators (e.g., Bloom filters), and all the counters used by the simulator.
+
 public class SetOfIndicators<K> {
   protected int 	 			cacheSize; //Cache size is used for estimating the # of items to be concurrently stored in the CBF
   protected short 	 		numOfIndicators, numOfSuggestedIndicators; // Number of simulated indicators (in case of a static benchmark), or of possible indicators vals (in some cases of a reconf' alg')
@@ -60,13 +63,13 @@ public class SetOfIndicators<K> {
   protected double 				deltaUpdateInterval; // multiplicative difference between succeessive update intervals   
   protected double 				deltaIndicatorSize; // mult' gap between sequencing indicator sizes
   protected String 				staticConfOutputFileName, algOutputFileName, algOutputFileName_FP_over_FN, algOutputFileName_u_interval, algOutputFileName_ind_size, algOutputFileName_Bw, algOutputFileName_hitRatio, algOutputFileName_util, algOutputFileName_details;
-  protected HashMap<K, Object> 			cache;
   protected boolean				sendOnlyFullIndicators = false; // When true, must always send a full indicator
   protected boolean 			sendFullIndicator; // Becomes true when it's necessary to send a full ind', e.g. at Full Indicator mode, or after each scaling of the ind'
   protected int    []			indSize; // indSize[i] will hold the Size of the indicator i
   protected double []			indSizeDouble; // A double representation of the indicators' sizes, which is more convenient for some calculations.
   protected double []			indSizelgIndSize; // indSizelgIndSize[i] will hold indSizeDouble[i] * log_2 (indSizeDouble[i])
   protected boolean 			runSingleIteration = true;
+  protected HashMap<K, Object> 			cache; // Used only when running alg', to allow alg' to re-build the indicator from scratch upon its rescaling. Not used when running a static conf', in which all possible indicators sizes are maintained in parallel.
   
   // Temporal checks, for internal usage 
   protected int 					deltaUpdatesCnt, fullUpdatesCnt;
@@ -190,6 +193,8 @@ public class SetOfIndicators<K> {
     reconfInterval = (int) (MyConfig.GetIntParameterFromConfFile ("reconf-interval") *Math.max (Math.ceil(maxIndicatorSize / bwBudget), cacheSize)); 
   }
   
+  // Returns a string that defines the setting of the current run, e.g.: "Wiki.C4K.HB20.Lru" means that
+  // trace name is "Wiki", cacheSize is 4K, use Hard Budget of 20, policy: Lru.
 	protected String algSettingsString () {
 		//String fullIndicatorOrDeltaMode = (this.sendOnlyFullIndicators)? 	"F" 	: "D";  //Full-indicators or Deltas
 		return String.format("%s%s.C%dK.M%.0f.%s%.0f.%s", 
@@ -232,6 +237,7 @@ public class SetOfIndicators<K> {
   protected void removeFromSinglendicator (int i, K key) {}
   protected void insertToSingleIndicator  (int i, K key) {}
   
+  // Called whenever the policy implemented by Caffeine's simulator removes a key from the cache. 
   public void remove (K key) {
   	if (this.runReconfAlg) {
   		cache.remove (key);
@@ -310,11 +316,8 @@ public class SetOfIndicators<K> {
   // Returns the number of bits per elements in the indicator, that is, indicatorSize / cacheSize   
   public double[] bitPerElement () {return null;  }
   
+  // Generate a single indicator. To be used by the reconf' alg'.
   protected void genIndicator (int size) {}
-
-  protected void initReconfAlg() {
-  		
-  }
 
   
   // Sets initial conf' within the budget constraints. Called only when a re-conf' alg' is run.
@@ -348,6 +351,8 @@ public class SetOfIndicators<K> {
   // Calculates the expected BW of the new conf', after the scaling 
   protected void scaleIndicator (int newSize) {}
   
+  // Prints some info about the current conf'. 
+  // This function is usually called when running reconf' alg', one in every reconf' interval (T).
   protected void printCurConf () {
   		// MyConfig.writeStringToFile (algOutputFileName, 						String.format ("%d            %d          FP = %.3f, FN = %.3f, %.2f       %.1f\n", curConf.indicatorSize, (int) curConf.updateInterval, curConf.FP,  curConf.FN, ResAnalyser.normalizedAiServiceCost(curConf.TP,  curConf.FP,  curConf.FN,  missp), curConf.normalizedBw));
   		// MyConfig.writeStringToFile (algOutputFileName, 						String.format ("%.2f  %.2f\n", ResAnalyser.normalizedAiServiceCost(curConf.TP,  curConf.FP,  curConf.FN,  missp), ResAnalyser.AiOverPiServiceCost(curConf.TP, curConf.FP, curConf.FN, missp)));
@@ -357,6 +362,7 @@ public class SetOfIndicators<K> {
     	//MyConfig.writeStringToFile (algOutputFileName_Bw, 				String.format ("(%d, %.3f)", reqCnt, curConf.normalizedBw / bwBudget));
   }
   
+  // Prints a basic info as comments to alg's output file
   protected void printAlgOutputHeader () {
 
   	File algOutputFile  = new File (algOutputFileName);
@@ -369,10 +375,14 @@ public class SetOfIndicators<K> {
 		MyConfig.writeStringToFile 		 (algOutputFileName, String.format ("//Ai cost / Ni cost    Ai cost / Pi cost\n"));	
   }
   
+  // Input: a desired size of the indicator (given as double).
+  // Output: if the desired size is feasible (not too large / small) - the requested size, but as int.
+  // Else: if the desired size is too large, return the max' ind' xize. if the desired size is too small, return the min' ind' xize.
   protected int fitIndSizeToRange (double size) {
   	return (int) Math.max (minIndicatorSize, Math.min (size, maxIndicatorSize));
   }
 
+  // Calculates the desired size of the indicator in Alg's full-indicator mode.
   protected void calcNewIndicatorSizeInFullIndModIDJmm () {
   	newConf.indicatorSize 	= //(int) this.maxIndicatorSize; 
   			  (curConf.FN == 0) ?
@@ -381,14 +391,8 @@ public class SetOfIndicators<K> {
   	));
   }
  
-  protected void calcNewIndicatorSizeInFullIndMod () {
-  	newConf.indicatorSize 	= //(int) this.maxIndicatorSize; 
-  			  (curConf.FN == 0) ?
-  			  (int) this.maxIndicatorSize :
-  			  fitIndSizeToRange (Math.floor ( (double) curConf.indicatorSize * Math.sqrt ( curConf.FP / (curConf.FN * missp)) 
-  	));
-  }
- 
+
+  // Calculates a list of possible (feasible) indicator's sizes, when run by Alg'. 
   protected void calcPossibleIndSizes () {
     Integer numOfSuggestedIndicatorsInt	= MyConfig.GetIntParameterFromConfFile ("num-of-indicators"); //if running static configurations, numOfSuggestedIndicators==numOfIndicators. However, if running reconf' alg', we have numOfIndicators==1.
     numOfSuggestedIndicators = numOfSuggestedIndicatorsInt.shortValue();
@@ -405,15 +409,16 @@ public class SetOfIndicators<K> {
   	Arrays.parallelSetAll (indSize, 					i -> (int) indSizeDouble[i]);
   }
 
+  // Adjust the indicator size while in "delta" mode, for satisfying the budget constraints. 
   protected void correctIndSizeInDeltasMode () {
   	double deisredRatio = bwBudget / curConf.normalizedBw;
   	double curIndSize						  	= (double) curConf.indicatorSize;
   	double curIndSizelgCurIndSize 	= curIndSize * Math.log (curIndSize) / Math.log(2); 
-  	double [] diffFromdesiredRatio 	= new double	[numOfSuggestedIndicators];
+  	double [] diffFromdesiredRatio 	= new double	[numOfSuggestedIndicators]; // Will hold the gap between the concrete, discrete, indicator size, and the desired indicator size
   	Arrays.parallelSetAll (diffFromdesiredRatio, i ->  Math.abs(indSizelgIndSize[i] / curIndSizelgCurIndSize - deisredRatio));
   	
-  	short  idxOfMin = 0;
-  	double minDiff = diffFromdesiredRatio[0];
+  	short  idxOfMin = 0; // index of the best suggested indicator size
+  	double minDiff = diffFromdesiredRatio[0]; // The minimum difference found so far, between a suggested indicator size, and the desired indicator size
   	for (short i=1; i < numOfSuggestedIndicators; i++) {
   		if (diffFromdesiredRatio[i] < minDiff) {
   			minDiff = diffFromdesiredRatio[i];
@@ -423,10 +428,12 @@ public class SetOfIndicators<K> {
 		newConf.indicatorSize = indSize[idxOfMin];
   }
 
+  // Fit the update interval to the budget, after selecting the indicator's size, in full-indicator mode.
   protected void fitUpdateIntervalToBudgetInFullIndMod () {
   	newConf.updateInterval 	= newConf.indicatorSize / this.bwBudget;  			 	
   }
   
+  // The CAB algorithm: select a new configuration
   protected void selectConfIdjmm () {
   	if (InDeltaMode()) {
   		if (curConf.indicatorSize == minIndicatorSize && curConf.normalizedBw > bwBudget) {
@@ -452,12 +459,14 @@ public class SetOfIndicators<K> {
       }
   	}
   }
-    
+   
+  // Returns true iff we're currently in "delta" mode
   protected boolean InDeltaMode () {
   	return (this.fullUpdatesCnt <= 1);
   }
   
   
+  // Update the cntrs of the current conf' according to the data collected during the last interval
   protected void updateConfIntervalCntrs () {
   	algSinceLastReConfCnt [bwIdx] = this.bwInCurReconfInterval [algIndicatorIdx];
     Arrays.parallelSetAll (algFullSimCnt, i -> algFullSimCnt[i]	+ algSinceLastReConfCnt[i]); // Add the cntrs since last re-conf' to the full-sim cntr
@@ -496,18 +505,18 @@ public class SetOfIndicators<K> {
       	MyConfig.writeStringToFile (algOutputFileName_hitRatio, 	String.format ("(%d, %.2f)", 	 reqCnt, curConf.TP + curConf.FN));
       	MyConfig.writeStringToFile (algOutputFileName_util,  String.format ("(%d, %.2f)", 	 reqCnt, curConf.normalizedBw / bwBudget));
     	}
-    }
+   }
 
-    curConf.updateCosts(missp); // Update both absolute cost and the cost normalized w.r.t. perfect ind'
+   curConf.updateCosts(missp); // Update both absolute cost and the cost normalized w.r.t. perfect ind'
     
-  	if (verbose == 2 || verbose == 3) {
-      printCurConf ();
-      if (checkParadox && curConf.paradox(missp)) { 
-      	System.out.println ("The Paradox happened");
-      }     
-  	}
+   if (verbose == 2 || verbose == 3) {
+    printCurConf ();
+    	if (checkParadox && curConf.paradox(missp)) { 
+    		System.out.println ("The Paradox happened");
+    	}     
+   }
 
-  	newConf = curConf.copy();
+  	newConf = curConf.copy(); // By default, the new conf' is identical to the current one. If needed, it will be changed.
   	
   	switch (runMode) {
   		 			
@@ -522,8 +531,8 @@ public class SetOfIndicators<K> {
   			MyConfig.printAndExit(String.format("Sorry, you chose run-mode %d, that is currently unsupported\n", runMode));
         
   	}
-  	if (newConf.indicatorSize != curConf.indicatorSize) {
-  		scaleIndicator (newConf.indicatorSize);
+  	if (newConf.indicatorSize != curConf.indicatorSize) { // Do we need to scale the indicator?
+  		scaleIndicator (newConf.indicatorSize); // Yep.
   		sendFullIndicator = true; // Next update, will have to send a full indicator
   	}
 		curConf 									= newConf.copy();
@@ -535,28 +544,29 @@ public class SetOfIndicators<K> {
   	  	
   }
 
+  // Handles a request from the user. This function is called whenever dispatching a request done to caffeine simulator's policy.
   public void handleRequest (K key, boolean isInCache) {
     reqCnt++;
-    if (reqCnt==1) {
+    if (reqCnt==1) { // Print an initial sentence when start running
     	System.out.printf("%s: runMode = %d. Starting iteration %d with uInterval=%d\n",
     										MyConfig.getTraceName(),
     										this.runMode,
     										currIteration, this.numOfEventsBetweenUpdates);
     }
-    if (reqCnt > maxNumOfReq) { 
+    if (reqCnt > maxNumOfReq) { // Allows shorter runs. Used mainly for debugging, or checking shorter sequences 
       MyConfig.printAndExit (String.format("Finished simulating %d requests\n", reqCnt-1));
     }
     
   	if (runReconfAlg) {
   	
-  	// Below is a patch for checking whether the "MyPolicy" indicateInsertion, indicateVictim indeed well dispatch every insertion, eviction caused by Caffeine 
-    //  		if (checkMyPolicyPatch) { // Check whether the "MyPolicy" indicateInsertion, indicateVictim indeed well dispatch every insertion, eviction.
-    //  			boolean isInMyShadowCache = cache.containsKey(key); 
-    //  			if (isInCache != isInMyShadowCache) {
-    //  				System.out.printf("Bug! InCache = " + isInCache + ", isInMyCache = " + isInMyShadowCache + "\n");
-    //  				System.exit(0);
-    //  			}
-    //  		}
+    	// Below is a patch for checking whether the "MyPolicy" indicateInsertion, indicateVictim indeed well dispatch every insertion, eviction caused by Caffeine 
+      //  		if (checkMyPolicyPatch) { // Check whether the "MyPolicy" indicateInsertion, indicateVictim indeed well dispatch every insertion, eviction.
+      //  			boolean isInMyShadowCache = cache.containsKey(key); 
+      //  			if (isInCache != isInMyShadowCache) {
+      //  				System.out.printf("Bug! InCache = " + isInCache + ", isInMyCache = " + isInMyShadowCache + "\n");
+      //  				System.exit(0);
+      //  			}
+      //  		}
   		
   		int indication = 
   				(oversubscribedToken)? queryLastKnownIndicator(key, algIndicatorIdx) : querySingleIndicator (algIndicatorIdx, key);
@@ -622,11 +632,6 @@ public class SetOfIndicators<K> {
   	return fpRate;
   }
   
-  // returns the ratio of FP which happened due to staleness  
-//  public double stalenessFpRate () {
-//    return (missCount == 0) ? 0.0 : (double) stalenessFpCnt / missCount;
-//  }
-
   // Returns an array. The entry i in the array is the FN rate of indicator i
   public double[] fnRate() {
   	
@@ -729,6 +734,7 @@ public class SetOfIndicators<K> {
     return res;
   }
   
+  // Some basic sanity checks to the results
 	protected void checkResults () {
 		if (reqCnt < 12 * cacheSize) {
 			System.out.println ("Warning: this trace is too short for this cache");
@@ -738,6 +744,7 @@ public class SetOfIndicators<K> {
   	}
 	}
 
+	// Print a standard header to an output file of a static conf' run 
 	protected void printOutputFileHeader (String outputFileName) {
 
 		File outputFile = new File (outputFileName);
@@ -750,6 +757,7 @@ public class SetOfIndicators<K> {
   	}		
 	}
 	
+	// Print sim results for a run of a static conf' 
 	public void printBenchmarkRunReport () {
 		
 		printOutputFileHeader 			(staticConfOutputFileName);
@@ -781,6 +789,7 @@ public class SetOfIndicators<K> {
 
 	}
 	
+	// Print sim results for a run of a reconf' alg' 
 	protected void printAlgRunReport () {
 		
   	if (verbose == 2 || verbose == 3) {
@@ -808,6 +817,7 @@ public class SetOfIndicators<K> {
 				
 	}
 	
+	// Called when caffeine's simulator finishes running the whole trace
   public void finished (PolicyStats policyStats) {
   	
   	checkResults (); // Basic sanity check

@@ -50,29 +50,41 @@ public class MyConfig {
   // However, Lfu cannot be run in conjunction with any other policy.
   // Input should be the policies names, splitted by periods, e.g.: "Lru.Frd"
   public static void setPolicies (String policiesNames) {
+  	if (policiesNames.equals("")) {
+  		return;
+  	}
   	String[] policies_as_arr = policiesNames.split("\\.");
   	if (policies_as_arr.length > 1) {
   		for (String policy : policies_as_arr) {
-  			if (policy.equals("Lfu")) {
-  				System.out.print ("You requested to run the policies " + policies +". However, I cannot run Lfu in the same sim with other policies.\n");
+  			if (policy.equals("W-TinyLfu")) {
+  				System.out.print ("You requested to run the policies " + policiesNames +". However, I cannot run Lfu in the same sim with other policies.\n");
   				System.exit(0);
   			}  				
   		}
   	}
   	policies = new ArrayList<>();
 		for (String policy : policies_as_arr) {
-			if (policy.equals("Lru")) {
-				policies.add ("my_linked.Lru");
-			}
-			if (policy.equals("Frd")) {
-				policies.add ("irr.Frd");
-			}
-			if (policy.equals("Hyperbolic")) {
-				policies.add ("sampled.Hyperbolic");
-			}
-			if (policy.equals("Lfu")) {
-				policies.add ("sketch.WindowTinyLfu");
-			}
+			addPolicy (policy);
+		}  	
+  }
+  
+  // Add a policy to the list of policies to be run. 
+  private static void addPolicy (String policy) {
+		if (policy.equals("Lru")) {
+			policies.add ("my_linked.Lru");
+		}
+		else if (policy.equals("Frd")) {
+			policies.add ("irr.Frd");
+		}
+		else if (policy.equals("Hyperbolic")) {
+			policies.add ("sampled.Hyperbolic");
+		}
+		else if (policy.equals("W-TinyLfu")) {
+			policies.add ("sketch.WindowTinyLfu");
+		}
+		else {
+			System.out.printf("Sorry, you requested an unsupported policies. Supported policies are: LRU, Frd, Hyperbolic, W-TinyLFU\n");
+			System.exit(0);
 		}  	
   }
   
@@ -319,16 +331,31 @@ public class MyConfig {
   	System.exit (0);
   }
   
-  // Returns the names of the policies running in the trace.
+  // Returns the names of the policies to be run.
   public static List<String>  getPolicies () {
-  	return (policies == null)? 
-  			getStringListParameterFromFile ("policies", confFileName) : policies;
+  	if (policies != null) {
+    	return policies;
+  	}
+  	
+  	List<String> policiesInConfFile = new ArrayList<>();
+  	policiesInConfFile							= getStringListParameterFromFile ("policies", confFileName);  	
+  	policies = new ArrayList<>();
+  	String policy;
+  	for (int i = 0; i < policiesInConfFile.size(); i++) {
+  		policy = policiesInConfFile.get(i);
+  		if (policiesInConfFile.size() > 1 && policy.equals("W-TinyLfu")) {
+  			System.out.print ("In application.conf you requested to run W-TinyLfu and other policies in the same run. Sorry, but I cannot do that.\n");
+  			System.exit(0);    		
+  		}
+    	addPolicy (policy);
+  	}
+  	return policies;
   }
 
   // Returns the names of the trace files running in the trace.
   public static List<String> getTraceFileName() {
   	return (traceFileName == null)? 
-  			getStringListParameterFromFile ("caffeine.simulator.files.paths", confFileName) : traceFileName;
+  			getStringListParameterFromFile ("traces.paths", confFileName) : traceFileName;
   }
 
 

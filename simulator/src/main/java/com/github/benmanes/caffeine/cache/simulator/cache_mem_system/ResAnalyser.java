@@ -277,8 +277,8 @@ public class ResAnalyser {
   	}	
 	}
 	
-	// Parse a line read from a standard sim run output file to its fields, representing, e.g., the update intervae, TP, TN etc.
-	// Returns true if the line had data to parse; otherwise (e.g., this line is a comment / empty line), returns false.
+	// Parse a line read from the output of a static conf' run. 
+	// Returns true if the line had data to parse; false, otherwise (e.g., when this line is a comment / empty line).
 	private boolean parseLine (String line) {
 	
   	String[] lineAsArray = line.split("\\s+"); 
@@ -301,7 +301,7 @@ public class ResAnalyser {
     
 	}
 
-	// To be called once an exception happens. Prints an error msg, and exits.
+	// To be called once an exception happens. Prints an error msg and exits.
 	private void exceptionCatcher (Exception e, String line) {
 		System.out.println ("Error while parsing file. exception msg is: " + e.getMessage());
 		if (line != null) {
@@ -339,6 +339,7 @@ public class ResAnalyser {
   }
 	
 
+	// An accessory function, printing a point (x, y) to a given output file. This format is convenient for tikz plots.  
 	private void printPoint (String outputFileName, double x, double y) {
     MyConfig.writeStringToFile (outputFileName, String.format("(%.5f, %.5f)", x, y));	
 	}
@@ -529,6 +530,7 @@ public class ResAnalyser {
 
 	}
 	
+	// Finds and plots the best, and the worst, conf' in each budget bin
 	public void BestWorstConfInBin (File inputFile, String outputFileName) {
   	
     String line = null;
@@ -727,6 +729,8 @@ public class ResAnalyser {
 		}
 	
 	// Prints the cost, indSize, uInterval, FP and FN of the cheapest-cost static conf'
+	// settings - the relevant simulation, e.g.: F1.C4K.Lru shows the sim' used the F1 trace, 4K-cache, Lru.
+	// mod is either "softBudgetMod" or "hardBudgetMod".
 	public void BestConfPerBudget (File inputFile, String settings, boolean mod) {
     
 		int numOfBudgets = this.budgets.length;
@@ -853,6 +857,13 @@ public class ResAnalyser {
 
 	}
 	
+	// Plots the false positive rate (FPR) / false positive prob (FPP) / false negative rate (FNR) / false negative prob' (FNP)
+	// as a function of the uInterval.
+	// mode is either:
+	// - printFpp
+	// - printFnp,
+	// - printStaleFpr - the fpr obtained when the # of req since the last update is within a given concrete range
+	// - printStaleFnr - the fnr obtained when the # of req since the last update is within a given concrete range
 	public void PlotFpFnPerUpdateInterval  (File inputFile, String outputFileName, int mode) {
 
 		int[] bitsPerElement = {2, 4, 8, 16};
@@ -939,6 +950,10 @@ public class ResAnalyser {
 	}
 	
 
+	// Parse a line in a meta-res file, that is, a file which already contains the results (cost) of multiple runs of the same trace.
+	// Each line in such a file has several parts, including: 
+	// - name (settings) of the run (e.g., "F1.IDJmm.C4K.HB20.Lru.res" indicates that this is a run of IDJmm (current version of CAB) alg, with Hard Budget of 20, Lru.
+	// - "cost = X", where X is a double, indicating the cost.
 	protected boolean parseLineInResResFile (String line) {
 
 		String[] lineAsArray = line.split("\\|"); 
@@ -964,16 +979,19 @@ public class ResAnalyser {
 	}
 
 
+	// Prints a requested points for a bar chart  
 	protected void printPointForBarChart (String outputFileName, String runMode, String cacheSizeToken, String budgetToken, String policy) {
 		MyConfig.writeStringToFile (outputFileName, 
 				String.format("%.5f  ", points.get (calcKey (runMode, cacheSizeToken, budgetToken, policy))));		
 	}
 
+	// Calcs the hash key for a concrete run. The key indicatres the exact setting of the run, e.g. "wiki2.C4K.LRu"  
 	protected String calcKey (String runMode, String cacheSizeToken, String budgetToken, String policy) {
 		return runMode + "." + cacheSizeToken + "." + budgetToken + "." + policy;
 	}
 	
 	
+	// Insert all the lines, representing the results of runs (either of static, or of alg'), to the hashmap "points".
 	protected void insertResDataToHashMap (String requestedTrace, String requestedBudgetToken) {
     String inputFileName  			= MyConfig.getFullPathResFileName(requestedTrace); 
 		double missp								= 3;
@@ -1005,6 +1023,7 @@ public class ResAnalyser {
 	}//wiki.static.C4K.M3.HB20.Frd 
 
 	
+	// Prints a ba chart comparing alg' to static conf's, for various given budgets.
 	protected void barAlgVsStaticForVariousBudgets (String requestedTrace) {
 		
     String outputFileName 			= MyConfig.resFileFullPath() + requestedTrace + ".budget.dat"; 
@@ -1034,6 +1053,7 @@ public class ResAnalyser {
 
   }
 
+	// Prints a ba chart comparing alg' to static conf's, for one fixed budgets, defined within the local variable "requestedBudgetToken". 
 	protected void barAlgVsStatic (String requestedTrace) {
 		
     String outputFileName 			= MyConfig.resFileFullPath() + requestedTrace + ".dat"; 
@@ -1100,6 +1120,8 @@ public class ResAnalyser {
 	}
 	
 	
+	// Picks from the output of the run of static conf' the results (cost and bw) of a concrete conf'.
+	// The input requested conf' is identified by the indSize and the uInterval.
 	public double printCostAndBwOfConcreteStaticConf (String inputFileName, int indSize, int uInterval, String outputFileName) {
 		String resFileFullPath 	= MyConfig.resFileFullPath();
 		File 	 inputFile 				= MyConfig.getFile (resFileFullPath + inputFileName 	+ ".res");
@@ -1253,6 +1275,8 @@ public class ResAnalyser {
 	} // end func'
 
 	
+	// Runs all the tasks defined in "enum Tasks {"
+	// at the beginning of this class.
 	public void runAll () {
 
 		double[] allMissPenalties = {3};

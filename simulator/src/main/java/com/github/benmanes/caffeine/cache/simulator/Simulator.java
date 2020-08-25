@@ -158,6 +158,9 @@ public final class Simulator extends AbstractActor {
     }
   }
 
+  // The main function is usually called by SimRunner.java
+  // If called with 0 paramters ("args" is null), all parameters are read from the configuration file, "application.conf".
+  // Else, some parameters are defined by args. This allows running multiple prallel sims, while using parameters that change from run to run.
   public static void main(String[] args) {
   	int runMode = MyConfig.GetIntParameterFromConfFile("run-mode");
   	if (runMode <= 0) {

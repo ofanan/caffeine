@@ -19,14 +19,14 @@ public class SimRunner {
   	String runWiki1 	= "wikipedia:C:\\Users\\ofanan\\Google Drive\\Comnet\\BF_n_Hash\\Python_Infocom19\\wiki.1190448987.gz";
   	String runCorda		= "corda:C:\\Users\\ofanan\\Documents\\traces\\corda\\corda.trace_vaultservice.gz";
   	 	
- 		MyConfig.setTraceFileName (runWiki1);
+ 		MyConfig.setTraceFileName (runCorda);
   
   	javax.swing.SwingUtilities.invokeLater(new Runnable() {
       	public void run() {
           	String[] args = {
           									"0", 		// number of first iteration. Used for multiple parallel simulations
           									"1",  	// number of iterations to run
-          									"Lfu" 	// Policies to run, splitted by periods, e.g.: "Lru.Frd"
+          									"" 	// Policies to run, splitted by periods, e.g.: "Lru.Frd". Suppoted policies are: "Lru", "Frd", "Hyperbolic", "WTinyLfu"
           									};
           	Simulator.main(args);
           

@@ -67,6 +67,7 @@ public class SetOfCBFs<K> extends SetOfIndicators<K> {
 
   }
 
+  // Calculates the log (with base 2) of the sizes of indicators 
   private void calcLgNumOfCntrs () {
   	Arrays.parallelSetAll (lgNumOfCntrs, i -> (int) ( Math.ceil( Math.log(numOfCntrs[i]) / ln2)) );  	
   }
@@ -81,13 +82,15 @@ public class SetOfCBFs<K> extends SetOfIndicators<K> {
   	calcLgNumOfCntrs ();  	
   }
   
+  // Returns the optimal number of hash functions for a given indicator's size 
   private int optimalNumOfHashFuncs (int size){
   	return (int) (Math.round (((double) size / cacheSize) * ln2) );
   }
   
   
-  // generate a single stale indicator in stale_indicator[algIndicatorIdx], and a single update indicator, in updated_indicator[algIndicatorIdx],
+  // Generate a single stale indicator in stale_indicator[algIndicatorIdx], and a single update indicator, in updated_indicator[algIndicatorIdx],
   // both of them at the requested size, and with opt' num' of hash funcs.
+  // To be used by the reconf' alg'
   @Override
   protected void genIndicator (int size) {
   	int numOfHashFuncs = optimalNumOfHashFuncs (size);
@@ -114,6 +117,8 @@ public class SetOfCBFs<K> extends SetOfIndicators<K> {
   }      
   
   @Override
+  // Returns the size of the indicator transmitted to the user. 
+  // In case of CBF, the "indicator size" sent is actually the number of counters in the indicator
   public int indicatorSize (int i) {
   	return numOfCntrs[i];
   }

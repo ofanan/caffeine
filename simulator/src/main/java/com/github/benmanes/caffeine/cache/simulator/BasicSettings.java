@@ -56,7 +56,6 @@ public class BasicSettings {
   }
 
   public Set<String> policies() {
-  	System.out.printf("policy is %s\n", MyConfig.getPolicies().get(0));
   	return MyConfig.getPolicies(). stream() .map(String::toLowerCase) .collect(toSet()); //$$
   }
 
