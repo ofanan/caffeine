@@ -50,9 +50,5 @@ target
 /simulator/.apt_generated/*
 /simulator/.project
 /simulator/.classpath
-
-
-
-
-
-
+/simulator/results/‏‏F1.C16K.HB10.Lru.res
+simulator/results/F1.C16K.HB10.Lru.res
