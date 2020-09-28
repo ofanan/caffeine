@@ -19,8 +19,8 @@ public class SetOfIndicators<K> {
   protected double[] 		fprVals; // Will hold the d.fpr values of the indicators
   protected String			policyName;
   protected int					runMode; 			// Mode of the run - see list of possible values (static, various versions of alg' etc.)  
-	public 		final int 	IDJmm	= 32; // Our CAB alg' (aka "IDJmm" for historical reasons)   
-	public 		final int 	staticConfWithForcedTokens	= 99; // Run a static conf', but enforce token regulation    
+  public 		final int 	IDJmm	= 32; // Our CAB alg' (aka "IDJmm" for historical reasons)   
+  public 		final int 	staticConfWithForcedTokens	= 99; // Run a static conf', but enforce token regulation    
   protected int  				verbose; //verbose = -1: print nothing. 0: print Alg's final cost. 1: print detailed output file. 2: additionally, print tikz-formatted output files
   protected boolean 		checkMyPolicyPatch = false; // Check whether the "MyPolicy" indicateInsertion, indicateVictim indeed well dispatch every insertion, eviction.
   protected boolean 		checkParadox = false; // Check and stdout a message when the Bloom Paradox happens
@@ -29,10 +29,10 @@ public class SetOfIndicators<K> {
   protected	boolean 		enforceTokensRegulation = false; 
   protected boolean 		oversubscribedToken = false; 
   
-  int 									currIteration, initialIteration; // for multi-iterations runs of the simulation
-	protected double 			updateIntervalRatioOfCacheSize;
-  protected int 				numOfEventsBetweenUpdates;
-  protected long 				reqCnt;
+  int 						currIteration, initialIteration; // for multi-iterations runs of the simulation
+  protected double 			updateIntervalRatioOfCacheSize;
+  protected int 			numOfEventsBetweenUpdates;
+  protected long 			reqCnt;
   protected long[]  		indication, invIndication; //indication[i], invIndication[i] will hold the indication of indicator i and its negation, resp.
   protected long[]  		tpCnt;
   protected long[]  		fpCnt;
@@ -73,7 +73,7 @@ public class SetOfIndicators<K> {
   
   // Temporal checks, for internal usage 
   protected int 					deltaUpdatesCnt, fullUpdatesCnt;
-
+  protected boolean 			parseTraceOnly = false;
 
   // C'tor
   public SetOfIndicators (String policyName) {
@@ -88,7 +88,8 @@ public class SetOfIndicators<K> {
     double deltaFpr 			= MyConfig.GetDoubleParameterFromConfFile	("delta-designed-indicator-fpr"); //delta between the values of inherent fpr of indicators
     hdrSize								= MyConfig.GetDoubleParameterFromConfFile	("hdr-size");
   	minUpdateInterval 		= MyConfig.GetDoubleParameterFromConfFile	("minimal-update-interval");
-  	verbose								= MyConfig.GetIntParameterFromConfFile 		("verbose"); 
+  	verbose								= MyConfig.GetIntParameterFromConfFile 		("verbose");
+  	this.parseTraceOnly					= (MyConfig.GetIntParameterFromConfFile 		("parse_trace_only") == 1)? true : false;
     missp									= MyConfig.GetDoubleParameterFromConfFile	("missp");
     runMode				 				= MyConfig.GetIntParameterFromConfFile		("run-mode");
     deltaIndicatorSize 		= MyConfig.GetDoubleParameterFromConfFile	("delta-indicator-size");
@@ -547,6 +548,12 @@ public class SetOfIndicators<K> {
   // Handles a request from the user. This function is called whenever dispatching a request done to caffeine simulator's policy.
   public void handleRequest (K key, boolean isInCache) {
     reqCnt++;
+    if (this.parseTraceOnly) {
+    	MyConfig.writeStringToFile("scarab.recs.trace.20160808T073231Z.xz.txt", String.format("%016X\n", key));
+    	//System.out.printf ("%016X\n", key);
+    	return;
+    }
+    
     if (reqCnt==1) { // Print an initial sentence when start running
     	System.out.printf("%s: runMode = %d. Starting iteration %d with uInterval=%d\n",
     										MyConfig.getTraceName(),

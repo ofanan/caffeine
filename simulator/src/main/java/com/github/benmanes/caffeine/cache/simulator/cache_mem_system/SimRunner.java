@@ -19,7 +19,7 @@ public class SimRunner {
   	String runWiki1 	= "wikipedia:C:\\Users\\ofanan\\Google Drive\\Comnet\\BF_n_Hash\\Python_Infocom19\\wiki.1190448987.gz";
   	String runCorda		= "corda:C:\\Users\\ofanan\\Documents\\traces\\corda\\corda.trace_vaultservice.gz";
   	 	
- 		MyConfig.setTraceFileName (runCorda);
+ 		MyConfig.setTraceFileName (runScarab);
   
   	javax.swing.SwingUtilities.invokeLater(new Runnable() {
       	public void run() {
