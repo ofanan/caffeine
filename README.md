@@ -8,135 +8,159 @@
 <img align="right" height="90px" src="https://raw.githubusercontent.com/ben-manes/caffeine/master/wiki/logo.png">
 </a>
 
-Caffeine is a [high performance][benchmarks], [near optimal][efficiency] caching library based on
-Java 8. For more details, see our [user's guide][users-guide] and browse the [API docs][javadoc] for
+Caffeine is a [high performance](https://github.com/ben-manes/caffeine/wiki/Benchmarks), [near optimal](https://github.com/ben-manes/caffeine/wiki/Efficiency) Java caching library. Caffeine's simulator allows simulating multiple cache policies, sizes and workloads. For more details, see caffeine's [user's guide](https://github.com/ben-manes/caffeine/wiki) and browse the [API docs](https://www.javadoc.io/doc/com.github.ben-manes.caffeine/caffeine/latest/com.github.benmanes.caffeine/module-summary.html) for
 the latest release.
 
-### Cache
+This fork adds to Caffeine's simulator an indicator. An indicator is a compact, lightweight database that allows the user predict whether a requested datum is found in the cache. If the answer is negative, the user can access directly a remote server instead of querying the cache for that item, thus saving the overhead of unnecessary cache accesses. The most prevalent indicator is the Bloom filter.
 
-Caffeine provides an in-memory cache using a Google Guava inspired API. The improvements draw on our
-experience designing [Guava's cache][guava-cache] and [ConcurrentLinkedHashMap][clhm].
+This fork further implements and tests the algorithm CAB, which dynamically scales the indicator, and the frequency of sending it to the user. This fork also implements and tests an optimal static 
+advertisement strategy. For further details, please refer to the paper
 
-```java
-LoadingCache<Key, Graph> graphs = Caffeine.newBuilder()
-    .maximumSize(10_000)
-    .expireAfterWrite(5, TimeUnit.MINUTES)
-    .refreshAfterWrite(1, TimeUnit.MINUTES)
-    .build(key -> createExpensiveGraph(key));
-```
+Cohen, G. Einziger, G. Scalosub. [Self-adjusting Advertisement of Cache Indicators with Bandwidth Constraints](https://www.researchgate.net/profile/Itamar-Cohen-2/publication/346733118_Self-adjusting_Advertisement_of_Cache_Indicators_with_Bandwidth_Constraints/links/606825bd92851c91b19c20b5/Self-adjusting-Advertisement-of-Cache-Indicators-with-Bandwidth-Constraints.pdf), Infocom 2021, pp. 1-10.
 
-#### Features at a Glance
+The documentation bellow details how to run a simulation, and the directories and files. Further documentation is found within the code files. 
 
-Caffeine provides flexible construction to create a cache with a combination of the following features:
- * [automatic loading of entries][population] into the cache, optionally asynchronously
- * [size-based eviction][size] when a maximum is exceeded based on [frequency and recency][efficiency]
- * [time-based expiration][time] of entries, measured since last access or last write
- * [asynchronously refresh][refresh] when the first stale request for an entry occurs
- * keys automatically wrapped in [weak references][reference]
- * values automatically wrapped in [weak or soft references][reference]
- * [notification][listener] of evicted (or otherwise removed) entries
- * [writes propagated][writer] to an external resource
- * accumulation of cache access [statistics][statistics]
+### Running a simulation
 
-In addition, Caffeine offers the following extensions:
- * [JSR-107 JCache][jsr107]
- * [Guava adapters][guava-adapter]
- * [Simulation][simulator]
+To run a simulation, run the file 
 
-Use Caffeine in a community provided integration:
- * [Play Framework][play]: High velocity web framework
- * [Micronaut][micronaut]: A modern, full-stack framework
- * [Spring Cache][spring]: As of Spring 4.3 & Boot 1.4
- * [Akka][akka-http]: Build reactive applications easily
- * [Quarkus][quarkus]: Supersonic Subatomic Java
- * [Scaffeine][scaffeine]: Scala wrapper for Caffeine
- * [ScalaCache][scala-cache]: Simple caching in Scala
- * [Camel][camel]: Routing and mediation engine
- * [JHipster][jhipster]: Generate, develop, deploy
+\caffeine\simulator\src\main\java\com\github\benmanes\caffeine\cache\simulator\cache_mem_system\SimRunner.java 
 
-Powering infrastructure near you:
- * [Dropwizard][dropwizard]: Ops-friendly, high-performance, RESTful APIs
- * [Cassandra][cassandra]: Manage massive amounts of data, fast
- * [Accumulo][accumulo]: A sorted, distributed key/value store
- * [HBase][hbase]: A distributed, scalable, big data store
- * [Apache Solr][solr]: Blazingly fast enterprise search
- * [Infinispan][infinispan]: Distributed in-memory data grid
- * [OpenWhisk][open-whisk]: Serverless cloud platform
- * [Corfu][corfu]: A cluster consistency platform
- * [Grails][grails]: Groovy-based web framework
- * [Finagle][finagle]: Extensible RPC system
- * [Neo4j][neo4j]: Graphs for Everyone
- * [Druid][druid]: Real-time analytics
+as a Java application (in Eclipse: ctrl+F11, or select the file in the file’s browser within the project’s view, and then press ctrl-x, and then J).
 
-### In the News
+The simulation's settings are determined by the configuration file:
 
- * An in-depth description of Caffeine's architecture.
-   * [Design of a Modern Cache: part #1][modern-cache-1], [part #2][modern-cache-2] ([slides][modern-cache-slides]) at [HighScalability][HighScalability]
- * Caffeine is presented as part of research papers evaluating its novel eviction policy.
-   * [TinyLFU: A Highly Efficient Cache Admission Policy][tinylfu] by Gil Einziger, Roy Friedman, Ben Manes
-   * [Adaptive Software Cache Management][adaptive-tinylfu] by Gil Einziger, Ohad Eytan, Roy Friedman, Ben Manes
+caffeine\simulator\src\main\resources\application.conf
 
-### Download
+This file determines settings such as the cache policy, which trace to run, etc.
+To allow running multiple simulations in parallel, some of the parameters (trace name, policy, iteration #) can be set also from SimRunner.java.
 
-Download from [Maven Central][maven] or depend via Gradle:
+Results ('.res') files are written to: 
+##### caffeine\simulator\results
 
-```gradle
-compile 'com.github.ben-manes.caffeine:caffeine:2.8.1'
+#### Post-simulation parsing of results
 
-// Optional extensions
-compile 'com.github.ben-manes.caffeine:guava:2.8.1'
-compile 'com.github.ben-manes.caffeine:jcache:2.8.1'
-```
+The file 
 
-See the [release notes][releases] for details of the changes.
+\caffeine\simulator\src\main\java\com\github\benmanes\caffeine\cache\simulator\cache_mem_system\ResAnalyserRunner.java 
 
-Snapshots of the development version are available in
-[Sonatype's snapshots repository][snapshots].
+parses the '.res' result files produced by the simulator, and performs tasks such as generating the points for tikz plots.
 
-[benchmarks]: https://github.com/ben-manes/caffeine/wiki/Benchmarks
-[users-guide]: https://github.com/ben-manes/caffeine/wiki
-[javadoc]: http://www.javadoc.io/doc/com.github.ben-manes.caffeine/caffeine
-[guava-cache]: https://github.com/google/guava/wiki/CachesExplained
-[clhm]: https://code.google.com/p/concurrentlinkedhashmap
-[population]: https://github.com/ben-manes/caffeine/wiki/Population
-[size]: https://github.com/ben-manes/caffeine/wiki/Eviction#size-based
-[time]: https://github.com/ben-manes/caffeine/wiki/Eviction#time-based
-[refresh]: https://github.com/ben-manes/caffeine/wiki/Refresh
-[reference]: https://github.com/ben-manes/caffeine/wiki/Eviction#reference-based
-[listener]: https://github.com/ben-manes/caffeine/wiki/Removal
-[writer]: https://github.com/ben-manes/caffeine/wiki/Writer
-[statistics]: https://github.com/ben-manes/caffeine/wiki/Statistics
-[simulator]: https://github.com/ben-manes/caffeine/wiki/Simulator
-[guava-adapter]: https://github.com/ben-manes/caffeine/wiki/Guava
-[jsr107]: https://github.com/ben-manes/caffeine/wiki/JCache
-[maven]: https://maven-badges.herokuapp.com/maven-central/com.github.ben-manes.caffeine/caffeine
-[releases]: https://github.com/ben-manes/caffeine/releases
-[snapshots]: https://oss.sonatype.org/content/repositories/snapshots/com/github/ben-manes/caffeine/
-[efficiency]: https://github.com/ben-manes/caffeine/wiki/Efficiency
-[tinylfu]: https://dl.acm.org/authorize?N41277
-[adaptive-tinylfu]: https://dl.acm.org/authorize?N675830
-[modern-cache-1]: http://highscalability.com/blog/2016/1/25/design-of-a-modern-cache.html
-[modern-cache-2]: http://highscalability.com/blog/2019/2/25/design-of-a-modern-cachepart-deux.html
-[modern-cache-slides]: https://docs.google.com/presentation/d/1NlDxyXsUG1qlVHMl4vsUUBQfAJ2c2NsFPNPr2qymIBs
-[highscalability]: http://highscalability.com
-[spring]: https://docs.spring.io/spring/docs/current/spring-framework-reference/integration.html#cache-store-configuration-caffeine
-[scala-cache]: https://github.com/cb372/scalacache
-[scaffeine]: https://github.com/blemale/scaffeine
-[hbase]: https://hbase.apache.org
-[cassandra]: http://cassandra.apache.org
-[solr]: https://lucene.apache.org/solr
-[infinispan]: http://infinispan.org/docs/stable/user_guide/user_guide.html#eviction_strategy
-[neo4j]: https://github.com/neo4j/neo4j
-[finagle]: https://github.com/twitter/finagle
-[druid]: https://druid.apache.org/docs/latest/configuration/index.html#cache-configuration
-[jhipster]: https://www.jhipster.tech/
-[open-whisk]: https://openwhisk.apache.org/
-[camel]: https://github.com/apache/camel/blob/master/components/camel-caffeine/src/main/docs/caffeine-cache-component.adoc
-[corfu]: https://github.com/CorfuDB/CorfuDB
-[akka-http]: https://doc.akka.io/docs/akka-http/current/common/caching.html
-[micronaut]: https://docs.micronaut.io/latest/guide/index.html#caching
-[play]: https://www.playframework.com/documentation/latest/JavaCache
-[accumulo]: https://accumulo.apache.org
-[dropwizard]: https://www.dropwizard.io
-[grails]: https://grails.org
-[quarkus]: https://quarkus.io
+To select which task to run (e.g., which tikz plot input to generate), see the documentation within 
+
+caffeine\simulator\src\main\java\com\github\benmanes\caffeine\cache\simulato/cache_mem_system/ResAnalyser.java 
+
+### Source code details #
+
+Edits to the standard Caffeine Github source files are usually indicated by $$ in the comments in the files. All relevant source files are in
+
+caffeine\simulator\src\main\java\com\github\benmanes\caffeine\cache\simulator
+
+The paths described below are as relative to that path.
+
+##### simulator.java
+Runs a simulation.
+The simulation runs by akka actors, which are async threads. 
+
+To allow multiple sequential runs (e.g., with various update intervals), use the variables currIteration and numOfIterations.
+The number of iterations is set by SimRunner.java.
+
+The concrete tasks to run (e.g., run simulation, post-sim analysis of results for plotting a pareto / heatmap) are also defined in application.conf.
+In general, the simulator either generates a simulation (by registry.java, setOfIndicators.java etc., see below), or a post-sim analysis (by resAnalyzer.java, see below).
+
+##### policy\registry.java
+In this file each cache policy registers itself and define the function which dispatches its running (usually XXXPolicy.policies).
+
+The main here w.r.t. the standard Caffeine are:
+- Addion of “import” to “my” cache policies.
+- Adding the functions “registerMyXXX” to the functions “registerXXX”. These functions handle the policies beginning with “my_”.
+The dispatch function of “my” policies is MyXXXPolicy.policies
+
+##### policy\PolicyStats.java
+Used to collect stats during the simulation, and analyze it (e.g., calculate the hit ratio) in the end. The class’ fields include the policy name and multiple counters which the policy ask its policyStats to increase during the simulation.
+
+The code includes some counters and functions not found in the standard Caffeine. However, they’re currently unused, as the simulation code collects statistics, analyze and prints independently, without using this stats.
+
+##### policy\AccessEvent.java
+Class of the event ( “request”). Includes the requested key, its weight, the concrete miss penalty of this concrete key etc.
+
+##### report\ directory
+This directory includes several classes which calculate / print the post-sim reports in various formats. Currently I don’t use them, as my code collects code, analyze and prints independently.
+
+##### Policy\…\XXXPolicy.java
+(e.g., policy\linked\XXXPolicy.java)
+Using Caffeine’s simulator policies for our needs entitles the following changes:
+- Added import of …/CacheMemSystem.My….Policy;
+- Added function isInCache(), for checking whether an item is in the cache, even without requesting the item from the cache. This is required mainly for stat (knowing whether as a request resulted in true / false positive / negative.
+- Added functions indicateInsertion, indicateVictim – intercepts insertion / victimization of a key from the $, for letting setOfIndicators add / remove the items from the indicators accordingly.
+- Some changes of fields from “private” or “final”, for letting other classes using and extending these fields.
+- Change of the method policies, so that now it calls MyXXXPolicy rather than XXXPolicy.
+
+##### cache_mem_system\ directory
+This directory contains the code files, which are new (that is, not slight modifications of standard Caffeine). 
+The code files in this directory are detailed below.
+
+##### cache_mem_system\MyConfig.java
+This class is responsible to reading configuration details from the file application.conf (see above), and writing results to stdout / to files it generates in simulator\results.
+The class also helps the main, found in simulator.java, and the akka actors (the policies which run along the simulation) set / get the current iteration #.
+
+##### cache_mem_system\MyXXXPolicy.java
+(e.g., MyLinkedPolicy.java).
+A class which extends Caffeine’s original XXX policy, by adding to it indicators and more statistics. 
+
+In particular, upon intercepting an insertion / eviction of a key to / from the cache, the class updates the indicators. 
+When finished, the class calls the indicators finished() function to analyze and print the stat.
+
+Upon a record (a data request), the class updates the indicators, for deciding whether to access the cache / the memory and update the counters respectively, and then call the method record of the super-class XXXPolicy.
+
+##### cache_mem_system\SetOfIndicators.java
+The heart of this project. Includes 2 arrays of indicators, each of them of its own size, as required by the desired inherent (“designed”) false positive rate, indicated in application.conf (see above).
+
+Keys are inserted into the updated indicators. Queries are from stale indicators. Once in a while a “SendUpdate()” happens: all the updated indicators are copied to the respective stale indicators.
+
+Note that “TP, FP” etc. calculated here are different from false positive ratio, false negative ratio. Here we use mainly the false positive / negative probability, that is, the # of TP, FP etc., over the total # of req.
+
+Using the generic class <K> for the keys allows storing different types of Keys (Caffeine’s simulator type for the keys is long).
+
+The individual insertion / removal / query operations are performed by the inheriting classes (e.g., SetOfCBFs), thus allowing multiple implementations of the indicators. 
+
+While during running a trace, or just before exiting, SetOfIndicators collects may print various reports to output files. The definition of which reports to print is done by the parameter “verbose” in application.conf (see above).
+
+##### cache_mem_system\SetOfCBFs.java
+Inherits from cache_mem_system\SetOfIndicators.java, using CBFs as indicators.
+
+##### cache_mem_system\resAnalyser.java
+-	Performs post-run calculations, such as absolute / normalized the costs of Approximate Ind, Perfect Ind’ and No Ind’. 
+-	Formats the data in a convenient way to tikz.
+
+Note that the cost may be calculated post-run iff the accs strategy is independent upon the missp, fpr, fnr etc. If the access strat’ is dependent upon missp, fpr , fnr, one should consider that already during run time.
+
+### Indicators used in this proejct
+Caffeine has several built-in indicators which are used for items’ popularity evaluation. They are found in: 
+
+com.github.benmanes.caffeine.cache.simulator.membership.
+
+However, none of them support removals. The indicators by com.google.common.hash.BloomFilter, or com.clearspring.analytics.stream.membership also don't support removals.
+
+Hence, this project uses the [Orestes](https://github.com/Baqend/Orestes-Bloomfilter) Counting Bloom Filters.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
