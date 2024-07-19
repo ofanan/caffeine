@@ -26,8 +26,6 @@ To run a simulation, run the file
 
 \caffeine\simulator\src\main\java\com\github\benmanes\caffeine\cache\simulator\cache_mem_system\SimRunner.java 
 
-as a Java application (in Eclipse: ctrl+F11, or select the file in the file’s browser within the project’s view, and then press ctrl-x, and then J).
-
 The simulation's settings are determined by the configuration file:
 
 caffeine\simulator\src\main\resources\application.conf
@@ -35,10 +33,9 @@ caffeine\simulator\src\main\resources\application.conf
 This file determines settings such as the cache policy, which trace to run, etc.
 To allow running multiple simulations in parallel, some of the parameters (trace name, policy, iteration #) can be set also from SimRunner.java.
 
-Results ('.res') files are written to: 
-##### caffeine\simulator\results
+Results ('.res') files are written to the directory caffeine\simulator\results
 
-#### Post-simulation parsing of results
+### Post-simulation parsing of results
 
 The file 
 
